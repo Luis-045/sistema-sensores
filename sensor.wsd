@@ -1,0 +1,100 @@
+@startuml sensor
+title Sistema de Monitoreo de Sensores
+
+
+
+' Interfaz
+interface Notificador {
+  +enviar(mensaje: str): void
+}
+
+' Notis
+class NotificadorEmail {
+  -destinatario: str
+  +enviar(mensaje: String): void
+}
+
+class NotificadorWebhook {
+  -url: str
+  +enviar(mensaje: String): void
+}
+
+class NotificadorSMS {
+  -numero: str
+  +enviar(mensaje: String): void
+}
+
+' Es una implementacion de la interfaz
+Notificador <|.. NotificadorEmail 
+Notificador <|.. NotificadorWebhook
+Notificador <|.. NotificadorSMS
+
+' Sensonres
+class Direccion {
+  id: str
+  nombre: str
+}
+
+abstract class Sensor <<abstract>> {
+  id: str
+  ventana: int = 5
+  calibracion: float
+  buffer: List<float>
+  direccion: Direccion
+  +leer(valor: float): void
+  +promedio(): float
+  +en_alerta(): bool
+}
+
+class SensorTemperatura {
+  umbral: float = 80.0
+  +en_alerta(): bool
+}
+
+class SensorVibracion {
+  rms_umbral: float = 2.5
+  +en_alerta(): bool
+}
+
+' Estas extienden de sensor
+Sensor <|-- SensorTemperatura
+Sensor <|-- SensorVibracion
+
+' Asociación una ubicación puede tener muchos sensores y un sensor puede tener 0..1 direcciones
+Direccion "1" <-- "0..*" Sensor : ubicado en
+
+' Las alertas
+enum NivelAlerta {
+  INFO
+  WARN
+  CRITICO
+}
+
+class Alerta {
+  sensor_id: String
+  mensaje: String
+  nivel: NivelAlerta
+}
+
+' Alerta usa el Enum NivelAlerta
+Alerta ..> NivelAlerta : usa
+
+' ===================== Gestor =====================
+class GestorAlertas {
+  -sensores: List<Sensor>
+  -notificadores: List<Notificador>
+  -historial: List<Alerta>
+  +evaluar_y_notificar(): void
+  +historial(): List<Alerta>
+}
+
+'Pienso que es una agregación pues si eliminas el gestor las notis siguen existiendo
+GestorAlertas "1" o-- "1..*" Notificador
+
+' Esta si es una composicon porque si eliminas gestor alertas se va el historial de alertas
+GestorAlertas "1" *-- "0..*" Alerta
+
+' Gestor alertas no guarda consigo los sensores solo los usa por lo que seria solo una relacion
+GestorAlertas "1" --> "0..*" Sensor 
+
+@enduml
